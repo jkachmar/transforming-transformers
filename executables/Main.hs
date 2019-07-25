@@ -2,9 +2,9 @@ module Main where
 
 import Prelude
 
-import Accounts (AccountConfig (..), Email (..), Password (..),
-                 WidgetConfig (..), createAccount, createWidget)
-import App (App, Config (..), runApp)
+import Accounts (AccountConfig (..), Accounts, Email (..), Password (..),
+                 WidgetConfig (..), Widgets, createAccount, createWidget)
+import App (Config (..), runApp)
 
 --------------------------------------------------------------------------------
 main :: IO ()
@@ -13,7 +13,7 @@ main = do
   runApp appConfig demo
 
 --------------------------------------------------------------------------------
-demo :: App ()
+demo :: (Accounts io, Widgets io) => io ()
 demo = do
   let
     email = Email "foo@example.com"
