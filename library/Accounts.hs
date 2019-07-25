@@ -8,7 +8,8 @@ import Prelude
 
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader)
-import Control.Monad.Trans.Reader (ReaderT (..))
+import Data.Generics.Product.Typed (typed)
+import Data.Kind (Type)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
@@ -25,10 +26,8 @@ newtype Password = Password Text
 
 --------------------------------------------------------------------------------
 -- | Account management configuration
-data AccountConfig
-  = AccountConfig
-  {
-  } deriving stock (Eq, Generic, Show)
+data AccountConfig = AccountConfig {}
+  deriving stock (Eq, Generic, Show)
 
 -- | Account management configuration retrieval interface
 --
@@ -49,25 +48,61 @@ type WithAccountConfig environment m =
   , MonadReader environment m
   )
 
---------------------------------------------------------------------------------
--- | Newtype "containing" the production implementation for the 'Accounts'
--- interface
---
--- Since we will be implementing our production functionality in terms of 'IO',
--- we will need to derive an instance for 'MonadIO'
---
--- So long as our final application transformer does not derive 'MonadIO' for
--- itself, the main application context cannot supply that capability
-newtype AccountT m a = AccountT (m a)
-  deriving newtype (Functor, Applicative, Monad, MonadIO)
+-- | An identity 'Monad' transformer that can be used with @deriving via@ to
+-- supply an 'Accounts' instance to some application newtype
+newtype AccountT (config :: Type) (m :: Type -> Type) (result :: Type)
+  = AccountT (m result)
+  deriving newtype ( Functor, Applicative, Monad
+                   , MonadIO, MonadReader environment
+                   )
 
 -- | Production implementation for the 'Accounts' interface
---
--- This is "affixed" to the 'AccountT' type so that different transformers can
--- derive this capability with the @DerivingVia@ language extension
-instance (MonadIO io, WithAccountConfig environment io)
-  => Accounts (AccountT io) where
+instance (MonadIO m, WithAccountConfig environment m)
+  => Accounts (AccountT config m) where
   createAccount (Email email) _password = do
     _ <- view accountConfigL
     liftIO . print $
       "Created an account for a user with the email address: " <> email
+
+--------------------------------------------------------------------------------
+-- | Customer widget creation interface
+class Monad m => Widgets m where
+  createWidget :: m ()
+
+-- | Widget creation configuration
+data WidgetConfig = WidgetConfig {}
+  deriving stock (Eq, Generic, Show)
+
+-- | Widget creation configuration retrieval interface
+--
+-- This interface provides a 'Lens\'' that focuses on the 'WidgetConfig' record
+-- within a larger @environment@
+class HasWidgetConfig environment where
+  widgetConfigL :: Lens' environment WidgetConfig
+
+-- | A 'WidgetConfig' can retrieve itself from itself via the identity
+-- function
+instance HasWidgetConfig WidgetConfig where
+  widgetConfigL = id
+
+-- | Convenience alias expressing that a given @environment@ and execution
+-- context provide the capability to retrieve an 'AccountConfig'
+type WithWidgetConfig environment m =
+  ( HasWidgetConfig environment
+  , MonadReader environment m
+  )
+
+-- | An identity 'Monad' transformer that can be used with @deriving via@ to
+-- supply a 'Widgets' instance to some application newtype
+newtype WidgetT (config :: Type) (m :: Type -> Type) (result :: Type)
+  = WidgetT (m result)
+  deriving newtype ( Functor, Applicative, Monad
+                   , MonadIO, MonadReader environment
+                   )
+
+-- | Production implementation for the 'Accounts' interface
+instance (MonadIO m, WithWidgetConfig environment m)
+  => Widgets (WidgetT config m) where
+  createWidget = do
+    _ <- view widgetConfigL
+    liftIO . print $ ("Created a widget!" :: Text)
