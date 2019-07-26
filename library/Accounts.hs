@@ -8,7 +8,6 @@ import Prelude
 
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader)
-import Data.Generics.Product.Typed (typed)
 import Data.Kind (Type)
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -50,7 +49,7 @@ type WithAccountConfig environment m =
 
 -- | An identity 'Monad' transformer that can be used with @deriving via@ to
 -- supply an 'Accounts' instance to some application newtype
-newtype AccountT (config :: Type) (m :: Type -> Type) (result :: Type)
+newtype AccountT (m :: Type -> Type) (result :: Type)
   = AccountT (m result)
   deriving newtype ( Functor, Applicative, Monad
                    , MonadIO, MonadReader environment
@@ -58,7 +57,7 @@ newtype AccountT (config :: Type) (m :: Type -> Type) (result :: Type)
 
 -- | Production implementation for the 'Accounts' interface
 instance (MonadIO m, WithAccountConfig environment m)
-  => Accounts (AccountT config m) where
+  => Accounts (AccountT m) where
   createAccount (Email email) _password = do
     _ <- view accountConfigL
     liftIO . print $
@@ -94,7 +93,7 @@ type WithWidgetConfig environment m =
 
 -- | An identity 'Monad' transformer that can be used with @deriving via@ to
 -- supply a 'Widgets' instance to some application newtype
-newtype WidgetT (config :: Type) (m :: Type -> Type) (result :: Type)
+newtype WidgetT (m :: Type -> Type) (result :: Type)
   = WidgetT (m result)
   deriving newtype ( Functor, Applicative, Monad
                    , MonadIO, MonadReader environment
@@ -102,7 +101,7 @@ newtype WidgetT (config :: Type) (m :: Type -> Type) (result :: Type)
 
 -- | Production implementation for the 'Accounts' interface
 instance (MonadIO m, WithWidgetConfig environment m)
-  => Widgets (WidgetT config m) where
+  => Widgets (WidgetT m) where
   createWidget = do
     _ <- view widgetConfigL
     liftIO . print $ ("Created a widget!" :: Text)

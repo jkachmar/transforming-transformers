@@ -48,9 +48,9 @@ newtype App a = App { _runApp :: Config -> IO a }
   deriving (Functor, Applicative, Monad, MonadIO, MonadReader Config)
     via (ReaderT Config IO)
   deriving (Accounts)
-    via (AccountT Config App)
+    via (AccountT App)
   deriving (Widgets)
-    via (WidgetT Config App)
+    via (WidgetT App)
 
 --------------------------------------------------------------------------------
 -- | Convenience function for running an 'App' action
